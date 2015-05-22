@@ -52,7 +52,7 @@ def myencrypt(inmsg, key):
     outmsg,i = "".encode("utf-8"), 0
     if((len(inmsg)%16)!=0):
         while ((len(inmsg)%16)!=0):
-            inmsg += " "
+            inmsg += "\0"
     while (i != len(inmsg)//16):
         msg = inmsg[i*16:(1+i)*16]
         des1cipher = DES.new(key[:8])
@@ -61,7 +61,6 @@ def myencrypt(inmsg, key):
         msg = msg.encode("utf-8")
         c1 = des1cipher.encrypt(msg[:8])
         z = c1 + msg[8:]
-        print(len(z))
         c2 = aescipher.encrypt(z)
         c3 = des2cipher.encrypt(c2[8:])
         outmsg += c2[:8] + c3
@@ -83,6 +82,7 @@ def mydecrypt(inmsg, key):
         p3 = des1cipher.decrypt(p2[:8])
         outmsg += (p3 + p2[8:]).decode("utf-8")
         i += 1
+    outmsg = outmsg.rstrip('\0')
     return outmsg
 
 
