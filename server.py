@@ -6,6 +6,8 @@
 
 import socket
 import random
+from Crypto.Cipher import AES
+from Crypto.Cipher import DES
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -29,20 +31,58 @@ def main():
     A = con.recv(4096)
     key = str(sqm(int(A.decode("utf-8")), b, n))
     
-    # TODO: better encryption than xor or onetimepad(too slow?)
+    # TODO: test encryption
     # TODO: send multiple messages and only listen in background
-    data, send = con.recv(4096), ""
-    while (sxor(data.decode("utf-8"), key) != "exit" and send != "exit"):
-        print("Partner: {0}".format(sxor((data.decode("utf-8")), key)))
+    data, send = con.recv(4096), " "
+    while (mydecrypt(data, key) != "exit" and send != "exit"):
+        print("Partner: {0}".format(mydecrypt(data, key)))
         send = input("You: ")
-        dsend = sxor(send, key)
-        con.sendall(dsend.encode("utf-8"))
+        dsend = myencrypt(send, key)
+        con.sendall(dsend)
         if(send != "exit"):
             data = con.recv(4096)
     print("[SERVER] Connection closed!")
     con.close()
     print("[SERVER] Shutting down...")
     sock.close()
+
+
+def myencrypt(inmsg, key):
+    outmsg,i = "".encode("utf-8"), 0
+    if((len(inmsg)%16)!=0):
+        while ((len(inmsg)%16)!=0):
+            inmsg += " "
+    print(inmsg)
+    while (i != len(inmsg)//16):
+        msg = inmsg[i*16:(1+i)*16]
+        des1cipher = DES.new(key[:8])
+        aescipher = AES.new(key[8:24], AES.MODE_CBC, key[24:40])
+        des2cipher = DES.new(key[40:48])
+        msg = msg.encode("utf-8")
+        c1 = des1cipher.encrypt(msg[:8])
+        z = c1 + msg[8:]
+        print(len(z))
+        c2 = aescipher.encrypt(z)
+        c3 = des2cipher.encrypt(c2[8:])
+        outmsg += c2[:8] + c3
+        i+=1
+    return outmsg
+
+def mydecrypt(inmsg, key):
+    outmsg,i = "", 0
+    while (i != len(inmsg)//16):
+        msg = inmsg[i*16:(i+1)*16]
+        des1cipher = DES.new(key[:8])
+        aescipher = AES.new(key[8:24], AES.MODE_CBC, key[24:40])
+        des2cipher = DES.new(key[40:48])
+        #msg = msg.encode("utf-8")
+        p1 = des2cipher.decrypt(msg[8:])
+        z = msg[:8] + p1
+        p2 = aescipher.decrypt(z)
+        p3 = des1cipher.decrypt(p2[:8])
+        outmsg += (p3 + p2[8:]).decode("utf-8")
+        i += 1
+    return outmsg
 
 
 def sxor(s1, s2):
