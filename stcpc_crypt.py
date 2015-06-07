@@ -13,20 +13,14 @@ from Crypto.Cipher import DES
 
 def client_dhke(sock):
     a = random.randint(2, 2**4096)
-    print("[CLIENT] Negotiate cryptographic parameters")
     k = int(sock.recv(4096).decode("utf-8"))
-    print("1...")
     n = int(sock.recv(4096).decode("utf-8"))
-    print("2...")
     B = sock.recv(4096)
-    print("3...")
     B = B.decode("utf-8")
     A = str(sqm(k, a , n))
     sock.sendall(A.encode("utf-8"))
     key = str(sqm(int(B), a, n))
     key = key.encode("utf-8")
-    print("[SUCCESS] Your messages will now be encrypted")
-    print("\n==============================================")
     return key
 
 
