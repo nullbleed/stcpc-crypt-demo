@@ -1,4 +1,5 @@
 #!/bin/python3
+# coding: utf-8
 #
 # Simple TCP-Chat Client                                                                                                                                           
 #
@@ -42,15 +43,17 @@ def main():
     key = crypt.client_dhke(sock)
 
     # TODO: test encryption
-    i,data = 0,"no"
-    while (i != "exit" and data != "exit"):
+    i,ddata,sector = 0,"no",0
+    while (i != "exit" and ddata != "exit"):
         i = input("You: ")
-        send = crypt.myencrypt(i, key)
+        send = crypt.myencrypt(i, key, sector)
         sock.sendall(send)
+        sector += len(send)
         if(i != "exit"):
             data = sock.recv(256)
-            data = crypt.mydecrypt(data, key)
-            print ("Partner: " + data)
+            ddata = crypt.mydecrypt(data, key, sector)
+            sector += len(data)
+            print ("Partner: " + ddata)
     print("[CLIENT] Connection closed! Exiting...")
 
 

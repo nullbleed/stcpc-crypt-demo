@@ -1,4 +1,5 @@
 #!/bin/python3
+# coding: utf-8
 #
 # Simple TCP-Chat Server
 #
@@ -25,12 +26,14 @@ def main():
     key = crypt.server_dhke(con)    
 
     # TODO: test encryption
-    data, send = con.recv(4096), " "
-    while (crypt.mydecrypt(data, key) != "exit" and send != "exit"):
-        print("Partner: {0}".format(crypt.mydecrypt(data, key)))
+    data, send, sector= con.recv(4096), " ",0
+    while (crypt.mydecrypt(data, key, sector) != "exit" and send != "exit"):
+        print("Partner: {0}".format(crypt.mydecrypt(data, key, sector)))
+        sector += len(data)
         send = input("You: ")
-        dsend = crypt.myencrypt(send, key)
+        dsend = crypt.myencrypt(send, key, sector)
         con.sendall(dsend)
+        sector += len(dsend)
         if(send != "exit"):
             data = con.recv(4096)
     print("[SERVER] Connection closed!")

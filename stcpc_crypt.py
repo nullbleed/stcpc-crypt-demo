@@ -1,3 +1,10 @@
+#!/bin/env python3
+# coding: utf-8
+#
+# Simple TCP-Chat Server
+#
+# 2015(c) Bernd Busse, Daniel Jankowski
+
 import random
 import time
 from Crypto.Cipher import AES
@@ -44,16 +51,16 @@ def server_dhke(con):
     return key
 
 
-def myencrypt(inmsg, key):
-    outmsg,i = "".encode("utf-8"), 0
+def myencrypt(inmsg, key, sector):
+    outmsg,i,keypad = "".encode("utf-8"), 0,((sector//16) * 48 % 1234)
     if((len(inmsg)%16)!=0):
         while ((len(inmsg)%16)!=0):
             inmsg += "\0"
     while (i != len(inmsg)//16):
         msg = inmsg[i*16:(1+i)*16]
-        des1cipher = DES.new(key[:8])
-        aescipher = AES.new(key[8:24], AES.MODE_CBC, key[24:40])
-        des2cipher = DES.new(key[40:48])
+        des1cipher = DES.new(key[(0 + keypad):(8 + keypad)])
+        aescipher = AES.new(key[(8 + keypad):(24 + keypad)], AES.MODE_CBC, key[(24 + keypad):(40 + keypad)])
+        des2cipher = DES.new(key[(40 + keypad):(48 + keypad)])
         msg = msg.encode("utf-8")
         c1 = des1cipher.encrypt(msg[:8])
         z = c1 + msg[8:]
@@ -64,13 +71,13 @@ def myencrypt(inmsg, key):
     return outmsg
 
 
-def mydecrypt(inmsg, key):
-    outmsg,i = "", 0
+def mydecrypt(inmsg, key, sector):
+    outmsg,i, keypad = "", 0, ((sector//16) * 48 % 1234)
     while (i != len(inmsg)//16):
         msg = inmsg[i*16:(i+1)*16]
-        des1cipher = DES.new(key[:8])
-        aescipher = AES.new(key[8:24], AES.MODE_CBC, key[24:40])
-        des2cipher = DES.new(key[40:48])
+        des1cipher = DES.new(key[(0 + keypad):(8 + keypad)])
+        aescipher = AES.new(key[(8 + keypad):(24 + keypad)], AES.MODE_CBC, key[(24 + keypad):(40 + keypad)])
+        des2cipher = DES.new(key[(40 + keypad):(48 + keypad)])
         p1 = des2cipher.decrypt(msg[8:])
         z = msg[:8] + p1
         p2 = aescipher.decrypt(z)
