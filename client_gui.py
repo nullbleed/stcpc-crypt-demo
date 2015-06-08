@@ -11,6 +11,7 @@ from threading import Thread, Event
 import urwid
 import stcpc_crypt as crypt
 import time
+import base64
 
 
 PROGNAME = 'stcpc - crypt demo(beta 0.3)' 
@@ -55,6 +56,7 @@ class ClientSock(Thread):
         return self.__sock
 
     def send_msg(self, msg, key):
+        #msg = (base64.b64encode(msg.encode("utf-8"))).decode("utf-8")
         emsg = crypt.myencrypt(msg, key, self.__sector)
         try:
             self.__sock.sendall(emsg)
@@ -76,7 +78,7 @@ class ClientSock(Thread):
         while not self.stop_event.is_set():
             if self.__haskey:
                 try:
-                    data = self.__sock.recv(256)
+                    data = self.__sock.recv(4096)
                 except sock.timeout:
                     self.stop_event.wait(1.0)
                     continue
@@ -84,23 +86,19 @@ class ClientSock(Thread):
                     self.__log("Received empty message. Closing connection...")
                     break
                 msg = crypt.mydecrypt(data, self.__key, self.__sector)
+                #msg = (base64.b64decode(msg.encode("utf-8"))).decode("utf-8")
                 self.__sector = self.__sector + len(data)
-                #self.__log(msg)
                 self.__callback.handle_incoming_message(msg)
         self.__shutdown()
 
 
 class MainLayout(urwid.Frame):
-    palette = [
-        ('normal', 'white', 'black'),
-        ('error', 'red', 'black'),
-        ('warning', 'yellow', 'black')
-            ]
     
     def __init__(self):
         self.__walker = urwid.SimpleListWalker([])
         self.__list = urwid.ListBox(self.__walker)
         self.__input = urwid.Edit(caption="$ ")
+        self.__command_mode = False
 
         list_cont = urwid.LineBox(self.__list, title=PROGNAME)
         input_cont = urwid.LineBox(self.__input)
@@ -110,15 +108,15 @@ class MainLayout(urwid.Frame):
         self.__connection = None
         self.__last_command_failed = False
 
-        self.__walker.append(urwid.Text("          __", urwid.LEFT))
-        self.__walker.append(urwid.Text("         /\\ \\__                          ", urwid.LEFT))
-        self.__walker.append(urwid.Text("     ____\\ \\ ,_\\   ___   _____     ___", urwid.LEFT))
-        self.__walker.append(urwid.Text("    /',__\\\\ \\ \\/  /'___\\/\\ '__`\\  /'___\\ ", urwid.LEFT))
-        self.__walker.append(urwid.Text("   /\\__, `\\\\ \\ \\_/\\ \\__/\\ \\ \\L\\ \\/\\ \\__/ ", urwid.LEFT))
-        self.__walker.append(urwid.Text("   \\/\\____/ \\ \\__\\ \\____\\\\ \\ ,__/\\ \\____\\", urwid.LEFT))
-        self.__walker.append(urwid.Text("    \\/___/   \\/__/\\/____/ \\ \\ \\/  \\/____/", urwid.LEFT))
-        self.__walker.append(urwid.Text("                           \\ \\_\\", urwid.LEFT))
-        self.__walker.append(urwid.Text("                            \\/_/       (beta 0.3 - crypt demo)", urwid.LEFT))
+        self.__walker.append(urwid.Text(('logo',"        __                                  "), urwid.CENTER))
+        self.__walker.append(urwid.Text(('logo',"      /\\ \\__                              "), urwid.CENTER))
+        self.__walker.append(urwid.Text(('logo',"   ____\\ \\ ,_\\   ___   _____     ___        "), urwid.CENTER))
+        self.__walker.append(urwid.Text(('logo',"  /',__\\\\ \\ \\/  /'___\\/\\ '__`\\  /'___\\      "), urwid.CENTER))
+        self.__walker.append(urwid.Text(('logo'," /\\__, `\\\\ \\ \\_/\\ \\__/\\ \\ \\L\\ \\/\\ \\__/      "), urwid.CENTER))
+        self.__walker.append(urwid.Text(('logo'," \\/\\____/ \\ \\__\\ \\____\\\\ \\ ,__/\\ \\____\\     "), urwid.CENTER))
+        self.__walker.append(urwid.Text(('logo',"  \\/___/   \\/__/\\/____/ \\ \\ \\/  \\/____/     "), urwid.CENTER))
+        self.__walker.append(urwid.Text(('logo',"                         \\ \\_\\              "), urwid.CENTER))
+        self.__walker.append(urwid.Text(('logo',"                                           \\/_/       (beta 0.3 - crypt demo)"), urwid.CENTER))
         self.__walker.append(urwid.Text("", urwid.CENTER))
 
     def __shutdown(self):
@@ -156,17 +154,17 @@ class MainLayout(urwid.Frame):
     def __send_msg(self, msg):
         if self.__connection:
             self.__connection.send_msg(msg, self.__key)
-            self.__walker.append(urwid.Text(msg, urwid.RIGHT))
+            self.__walker.append(urwid.Text(('sent',msg), urwid.RIGHT))
             pos = len(self.__walker)
             self.__list.set_focus(pos - 1)
 
     def handle_logging(self, msg):
-        self.__walker.append(urwid.Text(msg, urwid.CENTER))
+        self.__walker.append(urwid.Text(('status',msg), urwid.CENTER))
         pos = len(self.__walker) 
         self.__list.set_focus(pos - 1)
 
     def handle_incoming_message(self, msg):
-        self.__walker.append(urwid.Text(msg, urwid.LEFT))
+        self.__walker.append(urwid.Text(('incoming',msg), urwid.LEFT))
         pos = len(self.__walker) 
         self.__list.set_focus(pos - 1)
 
@@ -215,7 +213,7 @@ class MainLayout(urwid.Frame):
             return
         elif key == ':':
             if len(self.__input.get_edit_text()) == 0:
-                self.__input.set_caption(': ')
+                self.__input.set_caption(':')
                 self.__command_mode = True
                 return
 
@@ -223,9 +221,19 @@ class MainLayout(urwid.Frame):
 
 
 def main():
+    palette = [
+        ('normal', 'white', 'black'),
+        ('error', 'light red', 'black'),
+        ('warning', 'yellow', 'black'),
+        ('logo', 'light blue', 'black'),
+        ('status', 'dark gray', 'black'),
+        ('sent', 'light green', 'black'),
+        ('incoming','white','black'),
+            ]
+    
     main_layout = MainLayout()
 
-    loop = urwid.MainLoop(main_layout, screen=urwid.raw_display.Screen())
+    loop = urwid.MainLoop(main_layout, palette, screen=urwid.raw_display.Screen())
     loop.run()
 
 

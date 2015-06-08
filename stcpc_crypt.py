@@ -9,6 +9,7 @@ import random
 import time
 from Crypto.Cipher import AES
 from Crypto.Cipher import DES
+import base64
 
 
 def client_dhke(sock):
@@ -47,9 +48,10 @@ def server_dhke(con):
 
 def myencrypt(inmsg, key, sector):
     outmsg,i,keypad = "".encode("utf-8"), 0,((sector//16) * 48 % 74)
+    inmsg = (base64.b64encode(inmsg.encode("utf-8"))).decode("utf-8")
     if((len(inmsg)%16)!=0):
-        while ((len(inmsg)%16)!=0):
-            inmsg += "\0"
+       while ((len(inmsg)%16)!=0):
+           inmsg += "\0"
     while (i != len(inmsg)//16):
         msg = inmsg[i*16:(1+i)*16]
         des1cipher = DES.new(key[(0 + keypad):(8 + keypad)])
@@ -67,6 +69,7 @@ def myencrypt(inmsg, key, sector):
 
 def mydecrypt(inmsg, key, sector):
     outmsg,i, keypad = "", 0, ((sector//16) * 48 % 74)
+    print('decrypting...')
     while (i != len(inmsg)//16):
         msg = inmsg[i*16:(i+1)*16]
         des1cipher = DES.new(key[(0 + keypad):(8 + keypad)])
@@ -78,7 +81,7 @@ def mydecrypt(inmsg, key, sector):
         p3 = des1cipher.decrypt(p2[:8])
         outmsg += (p3 + p2[8:]).decode("utf-8")
         i += 1
-    outmsg = outmsg.rstrip('\0')
+    outmsg = (base64.b64decode(outmsg.encode("utf-8"))).decode("utf-8")
     return outmsg
 
 

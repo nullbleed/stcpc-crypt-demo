@@ -5,6 +5,7 @@
 import socket as sock
 from threading import Thread, Event
 import stcpc_crypt as crypt
+import base64
 
 
 SERV_ADDR = "0.0.0.0"
@@ -99,6 +100,7 @@ class TCPConnectionThread(Thread):
             # Send message
             try:
                 self.__sock.setblocking(True)
+                #emsg = (base64.b64encode(msg.encode("utf-8"))).decode("utf-8")
                 emsg = crypt.myencrypt(msg, self.__key, self.__sector)
                 self.__sock.sendall(emsg)
                 self.__sector = self.__sector + len(emsg)
@@ -114,7 +116,7 @@ class TCPConnectionThread(Thread):
         while not self.stop_event.is_set():
             # Receive some Data
             try:
-                data = self.__sock.recv(256)
+                data = self.__sock.recv(4096)
             except sock.timeout:
                 self.stop_event.wait(1.0)
                 continue
@@ -125,6 +127,7 @@ class TCPConnectionThread(Thread):
         
             dmsg = crypt.mydecrypt(data, self.__key, self.__sector)
             self.__sector = self.__sector + len(data)
+            #dmsg = (base64.b64decode(dmsg.encode("utf-8"))).decode("utf-8")
             self.__log("RECV_MSG: {0}".format(dmsg))
 
         self.__shutdown()
