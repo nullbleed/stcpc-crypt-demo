@@ -24,12 +24,15 @@ class ClientSock(Thread):
         self.__server = (addr, port)
         self.sock = None
         self.__callback = None
+        self.__sector = 0
 
     def __log(self, msg):
         self.__callback.handle_logging("STATUS: {0}".format(msg))
 
     def __shutdown(self):
+        self.__log('Close client socket')
         self.__sock.close()
+        self.__callback.handle_state(False)
 
     def get_event(self):
         return self.stop_event
@@ -51,9 +54,10 @@ class ClientSock(Thread):
         return self.__sock
 
     def send_msg(self, msg, key):
-        emsg = crypt.myencrypt(msg, key, 0)
+        emsg = crypt.myencrypt(msg, key, self.__sector)
         try:
             self.__sock.sendall(emsg)
+            self.__sector = self.__sector + len(emsg)
         except Exception as e:
             self.__log("Cannot send message: {0}".format(e))
 
@@ -78,8 +82,9 @@ class ClientSock(Thread):
                 if not data:
                     self.__log("Received empty message. Closing connection...")
                     break
-                msg = crypt.mydecrypt(data, self.__key, 0)
-                self.__log(msg)
+                msg = crypt.mydecrypt(data, self.__key, self.__sector)
+                self.__sector = self.__sector + len(data)
+                #self.__log(msg)
                 self.__callback.handle_incoming_message(msg)
         self.__shutdown()
 
@@ -146,12 +151,22 @@ class MainLayout(urwid.Frame):
         if self.__connection:
             self.__connection.send_msg(msg, self.__key)
             self.__walker.append(urwid.Text(msg, urwid.RIGHT))
+            pos = len(self.__walker)
+            self.__list.set_focus(pos - 1)
 
     def handle_logging(self, msg):
         self.__walker.append(urwid.Text(msg, urwid.CENTER))
+        pos = len(self.__walker) 
+        self.__list.set_focus(pos - 1)
 
     def handle_incoming_message(self, msg):
         self.__walker.append(urwid.Text(msg, urwid.LEFT))
+        pos = len(self.__walker) 
+        self.__list.set_focus(pos - 1)
+
+    def handle_state(self, alive):
+        if not alive:
+            self.__connection = None
 
     def connect(self, addr, port):
         if not self.__connection:
@@ -175,9 +190,14 @@ class MainLayout(urwid.Frame):
             return
         elif key == 'esc':
             self.__shutdown()
+        elif key == 'page up':
+            self.__list.keypress(size,'up')
+            return
+        elif key == 'page down':
+            self.__list.keypress(size, 'down')
+            return
 
         return super().keypress(size, key)
-
 
 
 def main():

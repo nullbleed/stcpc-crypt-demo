@@ -27,11 +27,11 @@ def main():
 
     # TODO: test encryption
     data, send, sector= con.recv(4096), " ",0
-    while (crypt.mydecrypt(data, key, 0) != "exit" and send != "exit"):
-        print("Partner: {0}".format(crypt.mydecrypt(data, key, 0)))
+    while (crypt.mydecrypt(data, key, sector) != "exit" and send != "exit"):
+        print("Partner: {0}".format(crypt.mydecrypt(data, key, sector)))
         sector += len(data)
         send = input("You: ")
-        dsend = crypt.myencrypt(send, key, 0)
+        dsend = crypt.myencrypt(send, key, sector)
         con.sendall(dsend)
         sector += len(dsend)
         if(send != "exit"):
