@@ -14,7 +14,6 @@ import time
 
 
 PROGNAME = 'stcpc - crypt demo(beta 0.3)' 
-HASKEY = False
 
 class ClientSock(Thread):
     
@@ -25,6 +24,7 @@ class ClientSock(Thread):
         self.sock = None
         self.__callback = None
         self.__sector = 0
+        self.__haskey = False
 
     def __log(self, msg):
         self.__callback.handle_logging("STATUS: {0}".format(msg))
@@ -33,6 +33,8 @@ class ClientSock(Thread):
         self.__log('Close client socket')
         self.__sock.close()
         self.__callback.handle_state(False)
+        self.__key = None
+        self.__sector = 0
 
     def get_event(self):
         return self.stop_event
@@ -47,8 +49,7 @@ class ClientSock(Thread):
         return self.__key
     
     def set_haskey(self):
-        global HASKEY
-        HASKEY = True
+        self.__haskey = True
 
     def get_sock(self):
         return self.__sock
@@ -73,7 +74,7 @@ class ClientSock(Thread):
             self.__log("Cannot connect to {0}:{1}".format(*self.__server))
             self.__shutdown()
         while not self.stop_event.is_set():
-            if HASKEY:
+            if self.__haskey:
                 try:
                     data = self.__sock.recv(256)
                 except sock.timeout:
@@ -129,20 +130,25 @@ class MainLayout(urwid.Frame):
         self.__input.set_edit_text("")
 
         # commands
-        if inp.startswith('/'):
-            if inp.strip() == '/exit':
+        if self.__command_mode:
+            if inp.strip() == 'exit':
                 self.__shutdown()
-            elif inp.startswith('/connect'):
+            elif inp.startswith('connect'):
                 ar = inp.split(' ')
                 if not len(ar) == 3:
                     self.__walker.append(urwid.Text(('error', u"Not enough args"), urwid.CENTER))
+                    self.__command_mode = False
+                    self.__input.set_caption('> ')
                     return
                 else:
                     self.connect(ar[1], int(ar[2]))
-                    time.sleep(1)
+                    self.__command_mode = False
+                    self.__input.set_caption('> ')
                     return
-            elif inp.strip() == '/disconnect':
+            elif inp.strip() == 'disconnect':
                 self.disconnect()
+                self.__command_mode = False
+                self.__input.set_caption('$ ')
                 return
 
         self.__send_msg(inp)
@@ -177,6 +183,7 @@ class MainLayout(urwid.Frame):
             time.sleep(1)
             self.__key = self.__connection.negotiate_key() 
             self.__connection.set_haskey()
+            self.__input.set_caption('> ')
 
     def disconnect(self):
         if self.__connection is not None:
@@ -189,6 +196,16 @@ class MainLayout(urwid.Frame):
             self.__parse_input()
             return
         elif key == 'esc':
+            if self.__command_mode:
+                self.__command_mode = False
+                if self.__connection:
+                    self.__input.set_caption('> ')
+                    self.__input.set_edit_text('')
+                    return
+                else:
+                    self.__input.set_caption('$ ')
+                    self.__input.set_edit_text('')
+                    return
             self.__shutdown()
         elif key == 'page up':
             self.__list.keypress(size,'up')
@@ -196,6 +213,11 @@ class MainLayout(urwid.Frame):
         elif key == 'page down':
             self.__list.keypress(size, 'down')
             return
+        elif key == ':':
+            if len(self.__input.get_edit_text()) == 0:
+                self.__input.set_caption(': ')
+                self.__command_mode = True
+                return
 
         return super().keypress(size, key)
 

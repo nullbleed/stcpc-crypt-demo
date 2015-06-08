@@ -46,7 +46,7 @@ def server_dhke(con):
 
 
 def myencrypt(inmsg, key, sector):
-    outmsg,i,keypad = "".encode("utf-8"), 0,((sector//16) * 48 % 1234)
+    outmsg,i,keypad = "".encode("utf-8"), 0,((sector//16) * 48 % 74)
     if((len(inmsg)%16)!=0):
         while ((len(inmsg)%16)!=0):
             inmsg += "\0"
@@ -66,7 +66,7 @@ def myencrypt(inmsg, key, sector):
 
 
 def mydecrypt(inmsg, key, sector):
-    outmsg,i, keypad = "", 0, ((sector//16) * 48 % 1234)
+    outmsg,i, keypad = "", 0, ((sector//16) * 48 % 74)
     while (i != len(inmsg)//16):
         msg = inmsg[i*16:(i+1)*16]
         des1cipher = DES.new(key[(0 + keypad):(8 + keypad)])
