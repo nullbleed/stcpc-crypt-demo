@@ -167,6 +167,7 @@ class MainLayout(urwid.Frame):
         self.__walker.append(urwid.Text(('incoming',msg), urwid.LEFT))
         pos = len(self.__walker) 
         self.__list.set_focus(pos - 1)
+        
 
     def handle_state(self, alive):
         if not alive:
@@ -220,6 +221,12 @@ class MainLayout(urwid.Frame):
         return super().keypress(size, key)
 
 
+def refresh_screen(mainloop):
+    while 1:
+        mainloop.draw_screen()
+        time.sleep(1)
+
+
 def main():
     palette = [
         ('normal', 'white', 'black'),
@@ -234,6 +241,8 @@ def main():
     main_layout = MainLayout()
 
     loop = urwid.MainLoop(main_layout, palette, screen=urwid.raw_display.Screen())
+    refresh = Thread(target=refresh_screen, args=(loop,))
+    refresh.start()
     loop.run()
 
 

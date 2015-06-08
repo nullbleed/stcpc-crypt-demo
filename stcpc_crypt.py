@@ -69,7 +69,7 @@ def myencrypt(inmsg, key, sector):
 
 def mydecrypt(inmsg, key, sector):
     outmsg,i, keypad = "", 0, ((sector//16) * 48 % 74)
-    print('decrypting...')
+    #print('decrypting...')
     while (i != len(inmsg)//16):
         msg = inmsg[i*16:(i+1)*16]
         des1cipher = DES.new(key[(0 + keypad):(8 + keypad)])
