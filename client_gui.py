@@ -15,6 +15,7 @@ import base64
 
 
 PROGNAME = 'stcpc - crypt demo(beta 0.3)' 
+RUN = True
 
 class ClientSock(Thread):
     
@@ -56,7 +57,6 @@ class ClientSock(Thread):
         return self.__sock
 
     def send_msg(self, msg, key):
-        #msg = (base64.b64encode(msg.encode("utf-8"))).decode("utf-8")
         emsg = crypt.myencrypt(msg, key, self.__sector)
         try:
             self.__sock.sendall(emsg)
@@ -67,7 +67,7 @@ class ClientSock(Thread):
     def run(self):
         self.__sock = sock.socket(sock.AF_INET, sock.SOCK_STREAM)
         try:
-            self.__log("Connecting to {0}:{1}...".format(*self.__server))
+            #self.__log("Connecting to {0}:{1}...".format(*self.__server))
             self.__sock.settimeout(10.0)
             self.__sock.connect(self.__server)
             self.__sock.settimeout(4.0)
@@ -86,7 +86,6 @@ class ClientSock(Thread):
                     self.__log("Received empty message. Closing connection...")
                     break
                 msg = crypt.mydecrypt(data, self.__key, self.__sector)
-                #msg = (base64.b64decode(msg.encode("utf-8"))).decode("utf-8")
                 self.__sector = self.__sector + len(data)
                 self.__callback.handle_incoming_message(msg)
         self.__shutdown()
@@ -120,6 +119,13 @@ class MainLayout(urwid.Frame):
         self.__walker.append(urwid.Text("", urwid.CENTER))
 
     def __shutdown(self):
+        self.handle_logging("Closing connections...")
+        global RUN
+        RUN = False
+        time.sleep(1)
+        self.handle_logging("Shutting down...")
+        self.__connection.get_event().set()
+        self.__connection.join()
         raise urwid.ExitMainLoop()
 
     def __parse_input(self):
@@ -148,7 +154,18 @@ class MainLayout(urwid.Frame):
                 self.__command_mode = False
                 self.__input.set_caption('$ ')
                 return
-
+            else:
+                self.__input.set_edit_text("WRONG COMMAND")
+                if self.__connection:
+                    self.__input.set_caption("> ")
+                    self.__command_mode = False
+                    self.__last_command_failed = True
+                    return
+                else:
+                    self.__input.set_caption("$ ")
+                    self.__command_mode = False
+                    self.__last_command_failed = True
+                    return
         self.__send_msg(inp)
 
     def __send_msg(self, msg):
@@ -176,21 +193,28 @@ class MainLayout(urwid.Frame):
     def connect(self, addr, port):
         if not self.__connection:
             # Connect to server
+            self.handle_logging("Connecting to {0}:{1}".format(addr,str(port)))
             self.__connection = ClientSock(addr, port)
             self.__connection.set_callback(self)
             self.__connection.start()
             time.sleep(1)
+            self.handle_logging("Negotiating key...")
             self.__key = self.__connection.negotiate_key() 
             self.__connection.set_haskey()
             self.__input.set_caption('> ')
 
     def disconnect(self):
         if self.__connection is not None:
+            self.handle_logging("Disconnecting...")
             self.__connection.get_event().set()
             self.__connection.join()
             self.__connection = None
 
     def keypress(self, size, key):
+        if self.__last_command_failed:
+            self.__input.set_edit_text("")
+            self.__last_command_failed = False
+        
         if key == 'enter':
             self.__parse_input()
             return
@@ -222,7 +246,8 @@ class MainLayout(urwid.Frame):
 
 
 def refresh_screen(mainloop):
-    while 1:
+    time.sleep(5)
+    while RUN:
         mainloop.draw_screen()
         time.sleep(1)
 
