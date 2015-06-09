@@ -13,6 +13,7 @@ import socket as sock
 from threading import Thread, Event
 import stcpc_crypt as crypt
 import base64
+import time
 
 
 SERV_ADDR = "0.0.0.0"
@@ -34,6 +35,8 @@ class TCPListenServer(Thread):
     def __shutdown(self):
         self.__log("Stopping TCPListenServer")
         for i, client in enumerate(self.__connections):
+            client.send_msg('')
+            time.sleep(1)
             client.stop()
             client.join()
 
@@ -44,8 +47,17 @@ class TCPListenServer(Thread):
         return self.stop_event
 
     def send_all_msg(self, msg):
-        for i, client in enumerate(self.__connections):
+        for client in self.__connections:
             client.send_msg(msg)
+
+    def send_client_msg(self, msg, client):
+        if client in self.__connections:
+            client.send_msg(msg)
+
+    def handle_message(self, msg, client):
+        for cl in self.__connections:
+            if cl != client:
+                cl.send_msg(msg)
 
     def run(self):
         self.__log("Starting TCPListenServer")
@@ -70,6 +82,7 @@ class TCPListenServer(Thread):
                 # Add new Coonection Thread
                 ct = TCPConnectionThread(conn[0], conn[1], self.__key)
                 self.__connections.append(ct)
+                ct.set_callback(self)
                 ct.start()
 
             self.stop_event.wait(1.0)
@@ -88,6 +101,7 @@ class TCPConnectionThread(Thread):
         self.__sock = socket
         self.__key = key
         self.__sector = 0
+        self.__callback = None
 
     def __log(self, msg):
         print("[{0}:{1}]: {msg}".format(*self.__peer_info, msg=msg))
@@ -99,6 +113,9 @@ class TCPConnectionThread(Thread):
         self.__sock.close()
         self.__sock = None
 
+    def set_callback(self, callback):
+        self.__callback = callback
+
     def get_event(self):
         return self.stop_event
 
@@ -107,7 +124,6 @@ class TCPConnectionThread(Thread):
             # Send message
             try:
                 self.__sock.setblocking(True)
-                #emsg = (base64.b64encode(msg.encode("utf-8"))).decode("utf-8")
                 emsg = crypt.myencrypt(msg, self.__key, self.__sector)
                 self.__sock.sendall(emsg)
                 self.__sector = self.__sector + len(emsg)
@@ -134,7 +150,8 @@ class TCPConnectionThread(Thread):
         
             dmsg = crypt.mydecrypt(data, self.__key, self.__sector)
             self.__sector = self.__sector + len(data)
-            #dmsg = (base64.b64decode(dmsg.encode("utf-8"))).decode("utf-8")
+            if self.__callback:
+                self.__callback.handle_message(dmsg, self)
             self.__log("RECV_MSG: {0}".format(dmsg))
 
         self.__shutdown()

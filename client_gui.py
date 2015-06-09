@@ -72,7 +72,6 @@ class ClientSock(Thread):
     def run(self):
         self.__sock = sock.socket(sock.AF_INET, sock.SOCK_STREAM)
         try:
-            #self.__log("Connecting to {0}:{1}...".format(*self.__server))
             self.__sock.settimeout(10.0)
             self.__sock.connect(self.__server)
             self.__sock.settimeout(4.0)
@@ -88,6 +87,7 @@ class ClientSock(Thread):
                     self.stop_event.wait(1.0)
                     continue
                 if not data:
+                    self.__sock.setblocking(0)
                     self.__log("Received empty message. Closing connection...")
                     break
                 msg = crypt.mydecrypt(data, self.__key, self.__sector)
@@ -194,7 +194,9 @@ class MainLayout(urwid.Frame):
         self.__walker.append(urwid.Text(('incoming',msg), urwid.LEFT))
         pos = len(self.__walker) 
         self.__list.set_focus(pos - 1)
-        
+       
+    def handle_shutdown(self):
+        self.__shutdown()
 
     def handle_state(self, alive):
         if not alive:
