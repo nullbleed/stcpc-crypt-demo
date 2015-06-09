@@ -12,6 +12,7 @@ import urwid
 import stcpc_crypt as crypt
 import time
 import base64
+import argparse
 
 
 PROGNAME = 'stcpc - crypt demo(beta 0.3)' 
@@ -93,7 +94,7 @@ class ClientSock(Thread):
 
 class MainLayout(urwid.Frame):
     
-    def __init__(self):
+    def __init__(self, host=None, port=None):
         self.__walker = urwid.SimpleListWalker([])
         self.__list = urwid.ListBox(self.__walker)
         self.__input = urwid.Edit(caption="$ ")
@@ -106,7 +107,7 @@ class MainLayout(urwid.Frame):
 
         self.__connection = None
         self.__last_command_failed = False
-
+        
         self.__walker.append(urwid.Text(('logo',"        __                                  "), urwid.CENTER))
         self.__walker.append(urwid.Text(('logo',"      /\\ \\__                              "), urwid.CENTER))
         self.__walker.append(urwid.Text(('logo',"   ____\\ \\ ,_\\   ___   _____     ___        "), urwid.CENTER))
@@ -117,6 +118,11 @@ class MainLayout(urwid.Frame):
         self.__walker.append(urwid.Text(('logo',"                         \\ \\_\\              "), urwid.CENTER))
         self.__walker.append(urwid.Text(('logo',"                                           \\/_/       (beta 0.3 - crypt demo)"), urwid.CENTER))
         self.__walker.append(urwid.Text("", urwid.CENTER))
+
+        if host and port:
+            print('Connecting...',)
+            self.connect(host, port)
+            self.__input.set_caption('> ')
 
     def __shutdown(self):
         self.handle_logging("Closing connections...")
@@ -202,6 +208,7 @@ class MainLayout(urwid.Frame):
             self.__key = self.__connection.negotiate_key() 
             self.__connection.set_haskey()
             self.__input.set_caption('> ')
+            self.__walker.append(urwid.Divider('\u2500'))
 
     def disconnect(self):
         if self.__connection is not None:
@@ -209,6 +216,7 @@ class MainLayout(urwid.Frame):
             self.__connection.get_event().set()
             self.__connection.join()
             self.__connection = None
+            self.__walker.append(urwid.Divider('\u2500'))
 
     def keypress(self, size, key):
         if self.__last_command_failed:
@@ -229,6 +237,7 @@ class MainLayout(urwid.Frame):
                     self.__input.set_caption('$ ')
                     self.__input.set_edit_text('')
                     return
+            self.handle_logging('Exiting...')
             self.__shutdown()
         elif key == 'page up':
             self.__list.keypress(size,'up')
@@ -253,18 +262,30 @@ def refresh_screen(mainloop):
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-H','--host', type=str)
+    parser.add_argument('-p','--port', type=int)
+    parser.add_argument('-l','--localhost', action='store_true')
+    args = parser.parse_args()
+    
+    host, port = None, None
+    if args.localhost:
+        host,port = '127.0.0.1', 1337
+    if args.host and args.port:
+        host,port = args.host, args.port       
+    
     palette = [
         ('normal', 'white', 'black'),
         ('error', 'light red', 'black'),
         ('warning', 'yellow', 'black'),
         ('logo', 'light blue', 'black'),
         ('status', 'dark gray', 'black'),
-        ('sent', 'light green', 'black'),
-        ('incoming','white','black'),
+        ('sent', 'black', 'dark green'),
+        ('incoming','black','light gray'),
             ]
     
-    main_layout = MainLayout()
-
+    main_layout = MainLayout(host, port)
+    
     loop = urwid.MainLoop(main_layout, palette, screen=urwid.raw_display.Screen())
     refresh = Thread(target=refresh_screen, args=(loop,))
     refresh.start()
