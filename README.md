@@ -1,5 +1,6 @@
 stcpc - Simple/Secure TCP-Chat - Crypt demo
 ===========================================
+
 <pre>
        __                             
       /\ \__                          
@@ -40,5 +41,9 @@ stcpc - Simple/Secure TCP-Chat - Crypt demo
 -----------------------------------
 
 ## License:
-© 2015 Bernd Busse, Daniel Jankowski
-All rights reserved.
+
+© 2015 nullbleed - All rights reserved
+
+Unauthorized copying of this file, via any medium is strictly prohibited
+Proprietary and confidential
+Written by Bernd Busse and Daniel Jankowski, 09.06.2015

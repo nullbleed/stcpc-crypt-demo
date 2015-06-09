@@ -1,6 +1,13 @@
 #!/bin/env python3
+# coding: utf-8
 #
-# TCP Server
+# Simple TCP-Chat Server
+#
+# © 2015 nullbleed - All rights reserved
+#
+# Unauthorized copying of this file, via any medium is strictly prohibited
+# Proprietary and confidential
+# Written by Bernd Busse and Daniel Jankowski, 09.06.2015
 
 import socket as sock
 from threading import Thread, Event

@@ -3,7 +3,11 @@
 #
 # Simple TCP-Chat Client                                                                                                                                           
 #
-# 2015(c) Bernd Busse, Daniel Jankowski
+# © 2015 nullbleed - All rights reserved
+#
+# Unauthorized copying of this file, via any medium is strictly prohibited
+# Proprietary and confidential
+# Written by Bernd Busse and Daniel Jankowski, 09.06.2015
 
 import urwid
 import socket as sock
