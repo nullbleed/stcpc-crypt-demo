@@ -16,6 +16,7 @@ stcpc - Simple/Secure TCP-Chat - Crypt demo
 ### Features
  - Simple TCP-Chat(Server and Client) with DHKE(4096) and AES256-CBC-encryption with DES-key-whitening
  - GUI-client with ncurses
+ - Forward messages to clients
  - Vim-like command mode
  - starting with arguments
  - Unicode-support
@@ -30,7 +31,6 @@ stcpc - Simple/Secure TCP-Chat - Crypt demo
 ```
 
 ### TODO
- - forward messages to clients
  - GUI improvements
  - Protocol
  - Certificates
