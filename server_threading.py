@@ -35,7 +35,7 @@ class TCPListenServer(Thread):
     def __shutdown(self):
         self.__log("Stopping TCPListenServer")
         for i, client in enumerate(self.__connections):
-            client.send_msg('')
+            client.send_msg('\x01\x03\x03\x07')
             time.sleep(1)
             client.stop()
             client.join()

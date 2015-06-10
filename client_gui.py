@@ -37,9 +37,11 @@ class ClientSock(Thread):
         self.__callback.handle_logging("STATUS: {0}".format(msg))
 
     def __shutdown(self):
-        self.__log('Close client socket')
         self.__sock.close()
+        self.__callback.handle_server_shutdown()
         self.__callback.handle_state(False)
+        self.__log('Close client socket')
+        self.__callback.draw_divider()
         self.__key = None
         self.__sector = 0
 
@@ -87,8 +89,11 @@ class ClientSock(Thread):
                     self.stop_event.wait(1.0)
                     continue
                 if not data:
-                    self.__sock.setblocking(0)
+                    self.__sock.settimeout(1)
                     self.__log("Received empty message. Closing connection...")
+                    break
+                elif crypt.mydecrypt(data, self.__key, self.__sector) == '\x01\x03\x03\x07':
+                    self.__log("Server ist shutting down. Closing connection...")
                     break
                 msg = crypt.mydecrypt(data, self.__key, self.__sector)
                 self.__sector = self.__sector + len(data)
@@ -134,8 +139,9 @@ class MainLayout(urwid.Frame):
         RUN = False
         time.sleep(1)
         self.handle_logging("Shutting down...")
-        self.__connection.get_event().set()
-        self.__connection.join()
+        if self.__connection:
+            self.__connection.get_event().set()
+            self.__connection.join()
         raise urwid.ExitMainLoop()
 
     def __parse_input(self):
@@ -194,13 +200,16 @@ class MainLayout(urwid.Frame):
         self.__walker.append(urwid.Text(('incoming',msg), urwid.LEFT))
         pos = len(self.__walker) 
         self.__list.set_focus(pos - 1)
-       
-    def handle_shutdown(self):
-        self.__shutdown()
 
     def handle_state(self, alive):
         if not alive:
             self.__connection = None
+    
+    def handle_server_shutdown(self):
+        self.__input.set_caption('$ ')
+
+    def draw_divider(self):
+        self.__walker.append(urwid.Divider('\u2500'))
 
     def connect(self, addr, port):
         if not self.__connection:
