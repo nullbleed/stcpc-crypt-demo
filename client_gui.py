@@ -103,11 +103,15 @@ class ClientSock(Thread):
 
 class MainLayout(urwid.Frame):
     
-    def __init__(self, host=None, port=None):
+    def __init__(self, host=None, port=None, nickname=None):
         self.__walker = urwid.SimpleListWalker([])
         self.__list = urwid.ListBox(self.__walker)
         self.__input = urwid.Edit(caption="$ ")
         self.__command_mode = False
+        if nickname is not None:
+            self.__nick = nickname
+        else:
+            self.__nick = 'anonym'
 
         list_cont = urwid.LineBox(self.__list, title=PROGNAME)
         input_cont = urwid.LineBox(self.__input)
@@ -131,7 +135,7 @@ class MainLayout(urwid.Frame):
         if host and port:
             print('Connecting...',)
             self.connect(host, port)
-            self.__input.set_caption('> ')
+            self.__input.set_caption('{0}> '.format(self.__nick))
 
     def __shutdown(self):
         self.handle_logging("Closing connections...")
@@ -158,22 +162,42 @@ class MainLayout(urwid.Frame):
                 if not len(ar) == 3:
                     self.__walker.append(urwid.Text(('error', u"Not enough args"), urwid.CENTER))
                     self.__command_mode = False
-                    self.__input.set_caption('> ')
+                    self.__input.set_caption('{0}> '.format(self.__nick))
                     return
                 else:
                     self.connect(ar[1], int(ar[2]))
                     self.__command_mode = False
-                    self.__input.set_caption('> ')
+                    self.__input.set_caption('{0}> '.format(self.__nick))
                     return
             elif inp.strip() == 'disconnect':
                 self.disconnect()
                 self.__command_mode = False
                 self.__input.set_caption('$ ')
                 return
+            elif inp.startswith('set'):
+                if inp.startswith('set nick'):
+                    ar = inp.split(' ')
+                    if not len(ar) == 3:
+                        self.__walker.append(urwid.Text(('error', u"Not enough args"), urwid.CENTER))
+                        self.__command_mode = False
+                        self.__input.set_caption('{0}> '.format(self.__nick))
+                        return
+                    else:
+                        if self.__connection:
+                            self.__connection.send_msg('\x09\x09{0}'.format(ar[2]) , self.__key)
+                            self.__walker.append(urwid.Text(('status', 'Changed your Nickname'), urwid.CENTER))
+                            self.__command_mode = False
+                            self.__nick = ar[2]
+                            self.__input.set_caption('{0}> '.format(self.__nick))
+                            return
+                        else:
+                            self.__walker.append(urwid.Text(('error', u"No connection to server"), urwid.CENTER))
+                            self.__command_mode = False
+                            self.__input.set_caption('$ ')
             else:
                 self.__input.set_edit_text("WRONG COMMAND")
                 if self.__connection:
-                    self.__input.set_caption("> ")
+                    self.__input.set_caption("{0}> ".format(self.__nick))
                     self.__command_mode = False
                     self.__last_command_failed = True
                     return
@@ -222,8 +246,10 @@ class MainLayout(urwid.Frame):
             self.handle_logging("Negotiating key...")
             self.__key = self.__connection.negotiate_key() 
             self.__connection.set_haskey()
-            self.__input.set_caption('> ')
+            self.__input.set_caption('{0}> '.format(self.__nick))
             self.__walker.append(urwid.Divider('\u2500'))
+            if self.__nick is not None:
+                self.__connection.send_msg('\x09\x09{0}'.format(self.__nick),self.__key)
 
     def disconnect(self):
         if self.__connection is not None:
@@ -281,6 +307,7 @@ def main():
     parser.add_argument('-H','--host', type=str)
     parser.add_argument('-p','--port', type=int)
     parser.add_argument('-l','--localhost', action='store_true')
+    parser.add_argument('-n','--nick', type=str)
     args = parser.parse_args()
     
     host, port = None, None
@@ -288,7 +315,11 @@ def main():
         host,port = '127.0.0.1', 1337
     if args.host and args.port:
         host,port = args.host, args.port       
-    
+    if args.nick:
+        nickname = args.nick
+    else:
+        nickname = None
+
     palette = [
         ('normal', 'white', 'black'),
         ('error', 'light red', 'black'),
@@ -299,7 +330,7 @@ def main():
         ('incoming','black','light gray'),
             ]
     
-    main_layout = MainLayout(host, port)
+    main_layout = MainLayout(host, port, nickname)
     
     loop = urwid.MainLoop(main_layout, palette, screen=urwid.raw_display.Screen())
     refresh = Thread(target=refresh_screen, args=(loop,))

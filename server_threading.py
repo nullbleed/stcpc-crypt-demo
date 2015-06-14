@@ -57,7 +57,12 @@ class TCPListenServer(Thread):
     def handle_message(self, msg, client):
         for cl in self.__connections:
             if cl != client:
-                cl.send_msg(msg)
+                cl.send_msg("[{0}] - ".format(client.get_nick()) + msg)
+
+    def handle_nick_change(self, client, old_nick, new_nick):
+        for cl in self.__connections:
+            if cl != client:
+                cl.send_msg("[Server] - {0} changed name to {1}".format(old_nick, new_nick))
 
     def run(self):
         self.__log("Starting TCPListenServer")
@@ -84,6 +89,7 @@ class TCPListenServer(Thread):
                 self.__connections.append(ct)
                 ct.set_callback(self)
                 ct.start()
+                self.handle_message('entered the room', ct)
 
             self.stop_event.wait(1.0)
 
@@ -98,6 +104,7 @@ class TCPConnectionThread(Thread):
         super().__init__()
         self.stop_event = Event()
         self.__peer_info = peer
+        self.__nick = peer[0]
         self.__sock = socket
         self.__key = key
         self.__sector = 0
@@ -118,6 +125,9 @@ class TCPConnectionThread(Thread):
 
     def get_event(self):
         return self.stop_event
+
+    def get_nick(self):
+        return self.__nick
 
     def send_msg(self, msg):
         if self.__sock:
@@ -150,7 +160,10 @@ class TCPConnectionThread(Thread):
         
             dmsg = crypt.mydecrypt(data, self.__key, self.__sector)
             self.__sector = self.__sector + len(data)
-            if self.__callback:
+            if dmsg.startswith('\x09\x09'):
+                self.__callback.handle_nick_change(self, self.__nick, dmsg.lstrip('\x09'))
+                self.__nick = dmsg.lstrip('\x09')
+            elif self.__callback:
                 self.__callback.handle_message(dmsg, self)
             self.__log("RECV_MSG: {0}".format(dmsg))
 

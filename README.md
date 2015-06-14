@@ -21,6 +21,7 @@ stcpc - Simple/Secure TCP-Chat - Crypt demo
  - starting with arguments
  - Unicode-support
  - Nice logo
+ - temporary nicknames
 
 ### Input parameters
 ```
@@ -28,6 +29,7 @@ stcpc - Simple/Secure TCP-Chat - Crypt demo
   -H HOST, --host HOST
   -p PORT, --port PORT
   -l, --localhost       connect to localhost:1337
+  -n, --nick NICK       set nickname to NICK
 ```
 
 ### TODO
