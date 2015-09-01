@@ -30,6 +30,7 @@ stcpc - Simple/Secure TCP-Chat - Crypt demo
   -p PORT, --port PORT
   -l, --localhost       connect to localhost:1337
   -n, --nick NICK       set nickname to NICK
+  -g, --generate        generates new primes(also working for the server)
 ```
 
 ### TODO
