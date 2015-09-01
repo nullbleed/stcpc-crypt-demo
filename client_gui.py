@@ -76,7 +76,7 @@ class ClientSock(Thread):
         try:
             self.__sock.settimeout(10.0)
             self.__sock.connect(self.__server)
-            self.__sock.settimeout(60.0)
+            self.__sock.settimeout(4.0)
             self.__log("Connected")
         except Exception as e:
             self.__log("Cannot connect to {0}:{1}".format(*self.__server))
