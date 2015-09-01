@@ -76,13 +76,14 @@ class ClientSock(Thread):
         try:
             self.__sock.settimeout(10.0)
             self.__sock.connect(self.__server)
-            self.__sock.settimeout(4.0)
+            self.__sock.settimeout(60.0)
             self.__log("Connected")
         except Exception as e:
             self.__log("Cannot connect to {0}:{1}".format(*self.__server))
             self.__shutdown()
         while not self.stop_event.is_set():
             if self.__haskey:
+                self.__sock.settimeout(60.0)
                 try:
                     data = self.__sock.recv(4096)
                 except sock.timeout:
@@ -308,9 +309,14 @@ def main():
     parser.add_argument('-p','--port', type=int)
     parser.add_argument('-l','--localhost', action='store_true')
     parser.add_argument('-n','--nick', type=str)
+    parser.add_argument('-g','--generate', action='store_true', help='Generates new primes')
     args = parser.parse_args()
     
     host, port = None, None
+    if args.generate:
+        print('Generating new primes...')
+        crypt.genprime_client()
+        return True
     if args.localhost:
         host,port = '127.0.0.1', 1337
     if args.host and args.port:

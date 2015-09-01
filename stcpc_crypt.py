@@ -9,28 +9,30 @@ import random
 import time
 from Crypto.Cipher import AES
 from Crypto.Cipher import DES
+from Crypto.Util import number
 import base64
 
 
+CLIENT_SAV = 'stcpc_client.crt'
+SERVER_SAV = 'stcpc_server.crt'
+
+
 def client_dhke(sock):
-    a = random.randint(2, 2**4096)
+    a = getprime_client()
     k = int(sock.recv(4096).decode("utf-8"))
     n = int(sock.recv(4096).decode("utf-8"))
-    B = sock.recv(4096)
-    B = B.decode("utf-8")
+    B = int(sock.recv(4096).decode("utf-8"))
     A = str(sqm(k, a , n))
     sock.sendall(A.encode("utf-8"))
-    key = str(sqm(int(B), a, n))
+    key = str(sqm(B, a, n))
     key = key.encode("utf-8")
     return key
 
 
 def server_dhke(con):
     print("[SERVER] Negotiating cryptographic parameters")
-    b = random.randint(2, 2**4096)
-    k = random.randint(2, 2**4096)
-    n = random.randint(2, 2**4096)
-    B = str(sqm(k, b, n))
+    b,n,k = getprimes_server()
+    B = sqm(k, b, n)
     print("1...")
     con.sendall(str(k).encode("utf-8"))
     time.sleep(1)
@@ -38,12 +40,66 @@ def server_dhke(con):
     con.sendall(str(n).encode("utf-8"))
     time.sleep(1)
     print("3...")
-    con.sendall(B.encode("utf-8"))
-    A = con.recv(4096)
-    key = str(sqm(int(A.decode("utf-8")), b, n))
+    con.sendall(str(B).encode("utf-8"))
+    A = int(con.recv(4096).decode("utf-8"))
+    key = str(sqm(A, b, n))
     print("[SUCCESS] Encrypting messages")
     print("\n===================================") 
     return key
+
+
+def getprime_client():
+    primetest_length = False
+    a = 0
+    while not primetest_length:
+        primetest_length = True
+        with open(CLIENT_SAV, 'rb') as f:
+            a = f.readline()
+        a = int(a.decode('utf-8'))
+        if a < 2**4095:
+            print('Error! Generating new primes...')
+            genprime_client()
+            primetest_length = False
+    return a
+
+
+def getprimes_server():
+    primetest_length = False
+    b,k,n = 0,0,0
+    while not primetest_length:
+        primetest_length = True
+        with open(SERVER_SAV, 'rb') as f:
+            for i, line in enumerate(f):
+                if i == 0:
+                    b = line
+                if i == 1:
+                    k = line
+                if i == 2:
+                    n = line
+        b,k,n = int(b),int(k),int(n)
+        if b < 2**4095 or k < 2**4095 or n > 2**4096:
+            print('Error! Generating new primes...')
+            genprime_client()
+            primetest_length = False
+    return b,k,n
+
+
+def genprime_client():
+    a = number.getStrongPrime(4096, 6)
+    with open(CLIENT_SAV, 'wb') as f:
+        f.write(str(a).encode('utf-8'))
+    return True
+
+
+def genprimes_server():
+    b = number.getStrongPrime(4096, 6)
+    k = number.getStrongPrime(4096, 6)
+    n = number.getStrongPrime(4096, 6)
+    with open(SERVER_SAV, 'w') as f:
+        f.writelines(str(b) + '\n')
+        f.writelines(str(k) + '\n')
+        f.writelines(str(n) + '\n')
+    return True
 
 
 def myencrypt(inmsg, key, sector):

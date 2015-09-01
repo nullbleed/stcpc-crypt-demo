@@ -14,6 +14,7 @@ from threading import Thread, Event
 import stcpc_crypt as crypt
 import base64
 import time
+import argparse
 
 
 SERV_ADDR = "0.0.0.0"
@@ -174,6 +175,16 @@ class TCPConnectionThread(Thread):
 
 
 def main():
+    # Argument Parsing
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-g','--generate', action='store_true', help='Generates new primes')
+    args = parser.parse_args()
+
+    if args.generate:
+        print('Generating new primes...')
+        crypt.genprimes_server()
+        return True
+
     # Start TCPListenServer
     server = TCPListenServer((SERV_ADDR, SERV_PORT))
     server.start()
